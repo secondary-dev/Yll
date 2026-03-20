@@ -4,56 +4,51 @@ import time
 
 # ==========================================
 # 1. CONFIGURATION & CUSTOMIZATION
-# Change these values for your brother!
 # ==========================================
-BROTHER_NAME = "My Brother" # Used in page title
-TARGET_NAME = "Alex"       # What he should type in the name box
-TARGET_BDAY = datetime.date(2005, 5, 10) # YYYY, MM, DD
+BROTHER_NAME = "My Brother" 
+TARGET_NAME = "Alex"       
+TARGET_BDAY = datetime.date(2005, 5, 10) 
 
-# Page config sets the browser tab title
 st.set_page_config(page_title=f"Happy Birthday {BROTHER_NAME}!", page_icon="🎂", layout="centered")
 
 # ==========================================
-# 2. CUSTOM CSS (To make it look nicer)
+# 2. CUSTOM CSS
 # ==========================================
 st.markdown("""
 <style>
-    /* Center all content */
-    .block-container {
-        padding-top: 2rem;
-        text-align: center;
-    }
-    /* Style headers */
-    h1, h2, h3 {
-        text-align: center;
-    }
-    /* Centered buttons */
-    div.stButton > button {
-        display: block;
-        margin: 0 auto;
-    }
-    /* Custom fade-in animation class */
-    .fade-in {
-        animation: fadeIn 2s;
-        -webkit-animation: fadeIn 2s;
-    }
-    @keyframes fadeIn {
-        0% {opacity:0;}
-        100% {opacity:1;}
+    .block-container { padding-top: 2rem; text-align: center; }
+    h1, h2, h3 { text-align: center; }
+    div.stButton > button { display: block; margin: 0 auto; }
+    .fade-in { animation: fadeIn 2s; -webkit-animation: fadeIn 2s; }
+    @keyframes fadeIn { 0% {opacity:0;} 100% {opacity:1;} }
+    
+    /* Big card reveal styling */
+    .big-card {
+        font-size: 60px;
+        padding: 40px;
+        border-radius: 15px;
+        border: 2px solid #ccc;
+        background-color: white;
+        color: black;
+        display: inline-block;
+        margin-top: 20px;
+        box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
 # 3. SESSION STATE MANAGEMENT
-# This keeps track of where we are in the story
 # ==========================================
 if 'page' not in st.session_state:
-    st.session_state.page = "login" # Start at login
+    st.session_state.page = "login"
 if 'magic_number' not in st.session_state:
     st.session_state.magic_number = None
+if 'picked_card' not in st.session_state:
+    st.session_state.picked_card = None
+if 'shuffle_count' not in st.session_state:
+    st.session_state.shuffle_count = 0
 
-# Helper function to change pages
 def go_to_page(page_name):
     st.session_state.page = page_name
     st.rerun()
@@ -62,114 +57,130 @@ def go_to_page(page_name):
 # 4. THE APP LOGIC (PAGE ROUTING)
 # ==========================================
 
-# --- STEP 1: LOGIN LOOKING PAGE ---
+# --- STEP 1: LOGIN ---
 if st.session_state.page == "login":
     st.title("🔐 Verification Required")
     st.subheader("Please confirm your details to proceed.")
-    
     with st.container():
         name = st.text_input("First Name", placeholder="e.g. John")
         nickname = st.text_input("Nickname", placeholder="What do I call you?")
-        
-        # Address - standard text input
         address = st.text_area("Delivery Address", placeholder="123 Party Ave...")
-
-        # Birthday Input - THIS IS THE TRIGGER
-        birth_date = st.date_input(
-            "Date of Birth",
-            value=None, # Starts empty
-            min_value=datetime.date(1900, 1, 1),
-            max_value=datetime.date.today(),
-            help="Type or select your birthday"
-        )
-
+        birth_date = st.date_input("Date of Birth", value=None, min_value=datetime.date(1900, 1, 1), max_value=datetime.date.today())
         st.markdown("---")
         
-        # Logic to check the birthday immediately when entered
         if birth_date is not None:
             if birth_date == TARGET_BDAY:
-                # Correct Birthday! Triggers visual effects and moves to next page
                 st.balloons()
                 st.snow()
-                # A brief pause to let them see the effects
                 time.sleep(1) 
                 go_to_page("burst_in")
             else:
-                # Incorrect Birthday
                 st.error("⚠️ Details do not match our records. Are you sure...?")
-                # Disabled looking button (it does nothing)
                 st.button("Sign In (Disabled)", disabled=True)
         else:
-            # Button is shown but disabled until date is entered
-            st.button("Sign In", disabled=True, help="Enter your birthday first")
+            st.button("Sign In", disabled=True)
 
-
-# --- STEP 2: THE BURST IN ---
+# --- STEP 2: BURST IN ---
 elif st.session_state.page == "burst_in":
-    # Wrap content in a div with 'fade-in' CSS class
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
-    
     st.title(f"🎉 Hey {TARGET_NAME}! 👋")
     st.header("That's today!!")
     st.subheader("I have a little something for you...")
-    
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Simple delay before automatic transition, or a button
     time.sleep(3)
     go_to_page("magic_show_intro")
 
-
-# --- STEP 3: CURTAINS OPEN / INTRO ---
+# --- STEP 3: CURTAINS OPEN ---
 elif st.session_state.page == "magic_show_intro":
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
-    
-    # Visualizing 'Curtains Open' with text emojis
     st.title(" 🎭 ⏪ ⏪ ⏩ ⏩ 🎭")
     st.title("Welcome to the Digital Magic Show!")
-    
     st.markdown('</div>', unsafe_allow_html=True)
-    
     if st.button("Let's go! ✨"):
         go_to_page("think_number")
 
-
-# --- STEP 4: THINK OF A NUMBER ---
+# --- STEP 4 & 5: THINK OF A NUMBER ---
 elif st.session_state.page == "think_number":
     st.header("1️⃣ Think of a number...")
-    st.subheader("Any whole number. Keep it in your head.")
-    
-    # number_input only accepts numbers. value=0 ensures it's not empty.
     num_input = st.number_input("Enter it here just so I can 'read' your mind:", value=0, step=1)
-    
-    if st.button("Think"):
+    if st.button("Think 🧠"):
         st.session_state.magic_number = num_input
         go_to_page("reveal_number")
 
-
-# --- STEP 5: DRUMROLL & REVEAL ---
 elif st.session_state.page == "reveal_number":
     st.markdown("### Was your number...")
-    
-    # Simulate Slow Animation Drumroll
-    status_text = st.empty() # Create a placeholder
+    status_text = st.empty()
     bar = st.progress(0)
-    
-    # Simple 'drumroll' simulation using progress bar and changing text
     drumroll_sounds = ["🥁 Drrr", "🥁 DrrrRr", "🥁 DRRRRRR", "🥁 TRRRRRRRRUM"]
     for i, sound in enumerate(drumroll_sounds):
         status_text.markdown(f"### {sound}")
         bar.progress((i + 1) * 25)
         time.sleep(0.5)
     
-    status_text.empty() # Clear drumroll text
-    bar.empty()        # Clear progress bar
-
-    # The Reveal
+    status_text.empty()
+    bar.empty()
     st.markdown(f'<h1 style="font-size: 100px; color: #FF4B4B;">{st.session_state.magic_number}</h1>', unsafe_allow_html=True)
     
     if st.button("Yes!! 😱"):
-        # This will be where we start Part 2
-        st.success("Told you I'm a magician. Let's move to the next trick...")
-        # Commented out until code for next page exists:
-        # go_to_page("pick_card")
+        go_to_page("pick_card") # <-- Link to the new page!
+
+# --- STEP 6: PICK A CARD ---
+elif st.session_state.page == "pick_card":
+    st.header("🃏 Trick #2: Pick Any Card")
+    st.write("Lock in your choice below.")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        card_value = st.selectbox("Value", ["Ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King"])
+    with col2:
+        card_suit = st.selectbox("Suit", ["Hearts ♥️", "Diamonds ♦️", "Clubs ♣️", "Spades ♠️"])
+    
+    st.markdown(f"### You are picking: **{card_value} of {card_suit}**")
+    
+    if st.button("Pick this card! 🔒"):
+        st.session_state.picked_card = f"{card_value} of {card_suit}"
+        go_to_page("shuffle_cards")
+
+# --- STEP 7 & 8: SHUFFLE CARDS ---
+elif st.session_state.page == "shuffle_cards":
+    st.header("Let's mix them up.")
+    st.write("The cards are face down. Click the button below to shuffle them. Do it as many times as you want to make sure I don't know where it is!")
+    
+    # Mash-to-shuffle mechanic
+    if st.button("🔀 Shuffle Cards", use_container_width=True):
+        st.session_state.shuffle_count += 1
+        st.toast("Shk shk shk... 🎴", icon="💨") # Little pop-up notification
+    
+    st.write(f"*You have shuffled {st.session_state.shuffle_count} times.*")
+    
+    st.markdown("---")
+    if st.button("I'm done, reveal my card!"):
+        go_to_page("reveal_card")
+
+# --- STEP 9: CARD REVEAL ---
+elif st.session_state.page == "reveal_card":
+    st.markdown('<div class="fade-in">', unsafe_allow_html=True)
+    st.markdown("### Was your card...")
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Drumroll
+    status_text = st.empty()
+    bar = st.progress(0)
+    for i in range(4):
+        status_text.markdown(f"### 🥁 {'...' * (i+1)}")
+        bar.progress((i + 1) * 25)
+        time.sleep(0.5)
+    
+    status_text.empty()
+    bar.empty()
+
+    # Determine color of text based on suit
+    color = "red" if "♥️" in st.session_state.picked_card or "♦️" in st.session_state.picked_card else "black"
+    
+    # The Reveal using custom CSS class
+    st.markdown(f'<div class="big-card" style="color: {color};">{st.session_state.picked_card}</div>', unsafe_allow_html=True)
+    
+    st.write("") # Spacer
+    if st.button("Next Trick... 🪄"):
+        st.success("Moving to the next stage...")
+        # go_to_page("tablecloth_trick") # Coming up next!
