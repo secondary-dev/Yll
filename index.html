@@ -1,1 +1,298 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Happy Birthday!</title>
+    <style>
+        /* --- GLOBAL STYLES --- */
+        body {
+            margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f9; color: #333; overflow-x: hidden;
+        }
+        .page {
+            display: none; min-height: 100vh; padding: 20px;
+            flex-direction: column; align-items: center; justify-content: center; text-align: center;
+            opacity: 0; transition: opacity 0.8s ease-in-out;
+        }
+        .page.active { display: flex; opacity: 1; }
+        
+        input, button { font-size: 16px; padding: 10px; margin: 10px; border-radius: 8px; border: 1px solid #ccc; width: 80%; max-width: 300px;}
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);}
+        button:disabled { background-color: #aaa; cursor: not-allowed; }
+        button:hover:not(:disabled) { background-color: #0056b3; }
+        
+        .progress-bar { width: 80%; max-width: 300px; height: 20px; background-color: #ddd; border-radius: 10px; margin: 20px auto; overflow: hidden; }
+        .progress-fill { height: 100%; background-color: #28a745; width: 0%; transition: width 0.5s; }
+
+        /* --- CARD TRICK STYLES --- */
+        #card-grid {
+            display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; width: 100%; max-width: 400px; margin-bottom: 20px;
+        }
+        .card {
+            background: white; border: 1px solid #999; border-radius: 4px; padding: 5px 0; font-size: 14px;
+            cursor: pointer; user-select: none; box-shadow: 1px 1px 3px rgba(0,0,0,0.2); transition: transform 0.2s;
+        }
+        .card.selected { border: 2px solid #007bff; transform: scale(1.1); background-color: #e6f2ff; }
+        .card.red { color: red; }
+        .card.black { color: black; }
+        
+        /* Drag and Drop Container */
+        #shuffle-area {
+            position: relative; width: 100%; height: 300px; border: 2px dashed #ccc; border-radius: 10px; overflow: hidden; background: #eaeaea;
+        }
+        .draggable-card {
+            position: absolute; width: 40px; height: 60px; background: repeating-linear-gradient(45deg, #b30000, #b30000 5px, #ffffff 5px, #ffffff 10px);
+            border: 1px solid #fff; border-radius: 4px; box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            cursor: grab; touch-action: none; /* Crucial for mobile dragging */
+        }
+        .draggable-card:active { cursor: grabbing; }
+        
+        .giant-card {
+            font-size: 60px; padding: 40px; border-radius: 15px; background: white; border: 2px solid #ccc;
+            display: inline-block; box-shadow: 5px 5px 15px rgba(0,0,0,0.3); margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="page-login" class="page active">
+        <h2>🔐 Verification Required</h2>
+        <p>Please confirm your details to proceed.</p>
+        <input type="text" placeholder="First Name">
+        <input type="text" placeholder="Nickname">
+        <input type="text" placeholder="Delivery Address">
+        <p style="margin-bottom: 5px; font-size: 14px; color: #666;">Date of Birth</p>
+        <input type="date" id="bday-input">
+        <p id="login-error" style="color: red; display: none;">Are you sure...?</p>
+        <button id="login-btn" disabled>Sign In</button>
+    </div>
+
+    <div id="page-burst" class="page">
+        <h1 style="font-size: 3em;">🎉 Hey! 👋</h1>
+        <h2>That's today!!</h2>
+        <p>I have a little something for you...</p>
+    </div>
+
+    <div id="page-intro" class="page">
+        <h1>🎭 ⏪ ⏪ ⏩ ⏩ 🎭</h1>
+        <h2>Welcome to the Digital Magic Show!</h2>
+        <button onclick="goToPage('page-think-number')">Let's go! ✨</button>
+    </div>
+
+    <div id="page-think-number" class="page">
+        <h2>1️⃣ Think of a number</h2>
+        <p>Type it so I can "read" your mind:</p>
+        <input type="number" id="magic-number-input" placeholder="Enter a number">
+        <button onclick="submitNumber()">Think 🧠</button>
+    </div>
+
+    <div id="page-reveal-number" class="page">
+        <h2>Was your number...</h2>
+        <h3 id="drumroll-text-1">🥁 Drrr...</h3>
+        <div class="progress-bar"><div class="progress-fill" id="progress-1"></div></div>
+        <h1 id="revealed-number" style="font-size: 80px; color: #007bff; display: none;"></h1>
+        <button id="yes-btn-1" style="display: none;" onclick="goToPage('page-pick-card')">Yes!! 😱</button>
+    </div>
+
+    <div id="page-pick-card" class="page">
+        <h2>🃏 Pick any card</h2>
+        <p>Tap a card to select it.</p>
+        <div id="card-grid"></div>
+        <p id="selected-card-text">None selected</p>
+        <button id="lock-card-btn" disabled onclick="goToPage('page-shuffle')">Pick this card! 🔒</button>
+    </div>
+
+    <div id="page-shuffle" class="page">
+        <h2>You can shuffle to make sure!</h2>
+        <p>Drag the cards around to mix them up.</p>
+        <div id="shuffle-area"></div>
+        <button onclick="revealCardPhase()">Done! Reveal it.</button>
+    </div>
+
+    <div id="page-reveal-card" class="page">
+        <h2>Was your card...</h2>
+        <h3 id="drumroll-text-2">🥁 Drrr...</h3>
+        <div class="progress-bar"><div class="progress-fill" id="progress-2"></div></div>
+        <div id="revealed-card" class="giant-card" style="display: none;"></div>
+        <br>
+        <button id="next-trick-btn" style="display: none;" onclick="alert('Next step coming soon!')">Okay, my turn... 🪄</button>
+    </div>
+
+    <script>
+        // --- APP STATE ---
+        const TARGET_BDAY = "2005-05-10";
+        let userNumber = 0;
+        let userCard = "";
+        let userCardColor = "";
+
+        // --- NAVIGATION LOGIC ---
+        function goToPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            setTimeout(() => {
+                document.getElementById(pageId).classList.add('active');
+            }, 50); // slight delay for smooth transition
+        }
+
+        // --- STEP 1: LOGIN LOGIC ---
+        const bdayInput = document.getElementById('bday-input');
+        const loginBtn = document.getElementById('login-btn');
+        const loginError = document.getElementById('login-error');
+
+        bdayInput.addEventListener('change', (e) => {
+            if (e.target.value === TARGET_BDAY) {
+                loginError.style.display = 'none';
+                loginBtn.disabled = true;
+                // Burst in!
+                goToPage('page-burst');
+                setTimeout(() => goToPage('page-intro'), 4000); // Auto move after 4s
+            } else if (e.target.value !== "") {
+                loginError.style.display = 'block';
+                loginBtn.disabled = true;
+            }
+        });
+
+        // --- STEP 4 & 5: NUMBER LOGIC ---
+        function submitNumber() {
+            const input = document.getElementById('magic-number-input').value;
+            if(!input) return;
+            userNumber = input;
+            goToPage('page-reveal-number');
+            doDrumroll('drumroll-text-1', 'progress-1', () => {
+                document.getElementById('drumroll-text-1').style.display = 'none';
+                document.getElementById('progress-1').parentElement.style.display = 'none';
+                const revealEl = document.getElementById('revealed-number');
+                revealEl.innerText = userNumber;
+                revealEl.style.display = 'block';
+                document.getElementById('yes-btn-1').style.display = 'block';
+            });
+            generateCards(); // Prep the next page
+        }
+
+        function doDrumroll(textId, progressId, callback) {
+            let progress = 0;
+            const textEl = document.getElementById(textId);
+            const progEl = document.getElementById(progressId);
+            const sounds = ["🥁 Drrr...", "🥁 DrrrRr...", "🥁 DRRRRRR...", "🥁 TRRRRRRRRUM!"];
+            let step = 0;
+
+            const interval = setInterval(() => {
+                progress += 25;
+                progEl.style.width = progress + '%';
+                textEl.innerText = sounds[step];
+                step++;
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(callback, 500);
+                }
+            }, 800);
+        }
+
+        // --- STEP 6: CARD GRID LOGIC ---
+        function generateCards() {
+            const grid = document.getElementById('card-grid');
+            if(grid.innerHTML !== "") return; // Already generated
+            const suits = [{s:'♥️', c:'red'}, {s:'♦️', c:'red'}, {s:'♣️', c:'black'}, {s:'♠️', c:'black'}];
+            const values = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+            
+            suits.forEach(suit => {
+                values.forEach(val => {
+                    const cardDiv = document.createElement('div');
+                    cardDiv.className = `card ${suit.c}`;
+                    cardDiv.innerText = `${val}${suit.s}`;
+                    cardDiv.onclick = () => selectCard(cardDiv, `${val} ${suit.s}`, suit.c);
+                    grid.appendChild(cardDiv);
+                });
+            });
+        }
+
+        function selectCard(element, cardName, color) {
+            document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+            element.classList.add('selected');
+            userCard = cardName;
+            userCardColor = color;
+            document.getElementById('selected-card-text').innerHTML = `You selected: <strong>${cardName}</strong>`;
+            document.getElementById('lock-card-btn').disabled = false;
+            generateDraggableCards(); // Prep the shuffle page
+        }
+
+        // --- STEP 7 & 8: SHUFFLE / DRAG LOGIC ---
+        function generateDraggableCards() {
+            const area = document.getElementById('shuffle-area');
+            if(area.innerHTML !== "") return;
+            
+            // Generate 20 fake facedown cards to drag around (52 lags too much on mobile)
+            for(let i=0; i<20; i++) {
+                const card = document.createElement('div');
+                card.className = 'draggable-card';
+                // Random initial positions
+                card.style.left = Math.random() * (area.clientWidth - 40) + 'px';
+                card.style.top = Math.random() * (area.clientHeight - 60) + 'px';
+                
+                // Dragging logic using Pointer Events (works for mouse and touch)
+                card.addEventListener('pointerdown', startDrag);
+                area.appendChild(card);
+            }
+        }
+
+        let activeCard = null;
+        let offsetX = 0; let offsetY = 0;
+
+        function startDrag(e) {
+            activeCard = e.target;
+            const rect = activeCard.getBoundingClientRect();
+            const areaRect = document.getElementById('shuffle-area').getBoundingClientRect();
+            
+            // Calculate where we clicked inside the card
+            offsetX = e.clientX - rect.left;
+            offsetY = e.clientY - rect.top;
+            
+            activeCard.setPointerCapture(e.pointerId);
+            activeCard.addEventListener('pointermove', drag);
+            activeCard.addEventListener('pointerup', endDrag);
+            activeCard.addEventListener('pointercancel', endDrag);
+        }
+
+        function drag(e) {
+            if (!activeCard) return;
+            e.preventDefault(); // Stop scrolling while dragging
+            
+            const areaRect = document.getElementById('shuffle-area').getBoundingClientRect();
+            let newX = e.clientX - areaRect.left - offsetX;
+            let newY = e.clientY - areaRect.top - offsetY;
+
+            // Keep inside boundaries
+            newX = Math.max(0, Math.min(newX, areaRect.width - 40));
+            newY = Math.max(0, Math.min(newY, areaRect.height - 60));
+
+            activeCard.style.left = newX + 'px';
+            activeCard.style.top = newY + 'px';
+        }
+
+        function endDrag(e) {
+            if (!activeCard) return;
+            activeCard.removeEventListener('pointermove', drag);
+            activeCard.removeEventListener('pointerup', endDrag);
+            activeCard.releasePointerCapture(e.pointerId);
+            activeCard = null;
+        }
+
+        // --- STEP 9: CARD REVEAL LOGIC ---
+        function revealCardPhase() {
+            goToPage('page-reveal-card');
+            doDrumroll('drumroll-text-2', 'progress-2', () => {
+                document.getElementById('drumroll-text-2').style.display = 'none';
+                document.getElementById('progress-2').parentElement.style.display = 'none';
+                
+                const revealEl = document.getElementById('revealed-card');
+                revealEl.innerText = userCard;
+                revealEl.style.color = userCardColor;
+                revealEl.style.display = 'inline-block';
+                document.getElementById('next-trick-btn').style.display = 'block';
+            });
+        }
+    </script>
+</body>
+</html>
